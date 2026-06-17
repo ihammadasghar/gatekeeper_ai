@@ -23,6 +23,19 @@
       "migrations_dir": "./migrations"
     }
   ],
+  "vectorize": [
+    {
+      "binding": "VECTORIZE",
+      "index_name": "gatekeeper-vectors"
+    }
+  ],
+  "workflows": [
+    {
+      "binding": "INGESTION_WORKFLOW",
+      "name": "ingestion-workflow",
+      "class_name": "IngestionWorkflow"
+    }
+  ],
   "durable_objects": {
     "bindings": [
       {

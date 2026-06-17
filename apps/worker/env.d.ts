@@ -8,6 +8,8 @@ declare namespace Cloudflare {
 	interface Env {
 		AI: Ai;
 		DB: D1Database;
+		VECTORIZE: VectorizeIndex;
+		INGESTION_WORKFLOW: Workflow;
 		GITHUB_REPO_URL: string;
 		GITHUB_TOKEN: string;
 		GOOGLE_GENERATIVE_AI_API_KEY: string;
