@@ -10,7 +10,13 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["src/**", "!node_modules", "!dist", "!**/*.css", "!./env.d.ts"]
+    "includes": [
+      "apps/worker/src/**",
+      "!node_modules",
+      "!dist",
+      "!**/*.css",
+      "!./apps/worker/env.d.ts"
+    ]
   },
   "formatter": {
     "enabled": false,

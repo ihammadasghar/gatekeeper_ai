@@ -1,1 +1,5 @@
-env.d.ts
+apps/worker/env.d.ts
+apps/*/dist
+apps/web/.next
+**/node_modules
+.turbo

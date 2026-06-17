@@ -26,6 +26,94 @@ Issue Arcitect AI is a GitHub App powered by Cloudflare Agents. Its primary job 
 
 ## 📜 Coding Standards (Non-Negotiable)
 
+## Design Principles
+
+### 1. Dependency Injection
+
+- Every class that calls an external system (graph DB, GitHub API, filesystem) **receives its dependencies through the constructor**, typed as interfaces.
+- Never call `new ConcreteService()` inside a class body — always inject from outside.
+- Define a `I<ServiceName>` interface for every injectable dependency.
+- Tests pass mock objects that satisfy the interface — no module-level patching needed.
+
+```typescript
+interface IGitHubService {
+  createBranch(params: CreateBranchParams): Promise<Branch>;
+}
+
+export class SimulationService {
+  constructor(private readonly github: IGitHubService) {}
+
+  async start(params: CreateBranchParams): Promise<Branch> {
+    return this.github.createBranch(params);
+  }
+}
+```
+
+### 2. OOP Structure + Functional Method Style
+
+- Use **classes** to group related behaviour and encapsulate dependencies (OOP).
+- Write **methods** in a functional style — prefer `map`, `filter`, `reduce`, `flatMap` over imperative loops.
+- Keep methods short and pure where possible; extract complex logic into small named private helpers.
+- Compose helpers rather than writing deep method chains or nested ternaries.
+
+### 3. Immutability
+
+- All class fields and interface properties must be `readonly`.
+- Never mutate function arguments — return new objects/arrays via spread or non-mutating array methods.
+- Use `as const` for fixed-value lookup objects.
+- Avoid in-place mutators: `push`, `splice`, `sort` (without copy), `delete obj[key]`.
+
+---
+
+## Testing Instructions
+
+- Framework: Vitest with React Testing Library
+- Follow AAA pattern: Arrange, Act, Assert
+- Mock external dependencies by passing mock implementations to constructors (dependency injection) — avoid patching modules with `vi.mock` unless absolutely necessary
+- Co-locate tests: `Component.test.tsx` next to `Component.tsx`
+- Target: 80%+ coverage on controllers, 90%+ on utilities
+
+**DI mocking example:**
+
+```typescript
+// Define interface
+interface IGraphService {
+  queryConflicts(simId: string): Promise<RawConflict[]>;
+}
+
+// Test — inject mock directly; no module patching needed
+describe("ConflictAnalyser", () => {
+  it("filters out soft conflicts", async () => {
+    // Arrange
+    const mockGraph: IGraphService = {
+      queryConflicts: vi.fn().mockResolvedValue([
+        { id: "1", type: "HARD", msg: "Room overlap", severity: 10 },
+        { id: "2", type: "SOFT", msg: "Gap too large", severity: 2 }
+      ])
+    };
+    const analyser = new ConflictAnalyser(mockGraph);
+
+    // Act
+    const result = await analyser.findConflicts("sim-1");
+
+    // Assert
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("1");
+  });
+});
+```
+
+```bash
+pnpm test              # Run all tests
+pnpm test --watch      # Watch mode
+pnpm test --coverage   # With coverage report
+pnpm vitest run -t "<test name>"  # Run specific test
+```
+
+Add or update tests for any code you change, even if not explicitly asked.
+
+---
+
 ### TypeScript & Logic
 
 - **Strictness:** `strict: true` is enabled. **Never use `any**`. Use `unknown` if a type is truly uncertain.
