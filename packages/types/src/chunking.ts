@@ -19,6 +19,19 @@ export interface ChunkMetadata {
   readonly file_path: string;
 }
 
-export interface IChunker {
-  chunk(content: string, metadata: ChunkMetadata): VectorDocument[];
+export interface IssueInput {
+  readonly number: number;
+  readonly title: string;
+  readonly state: 'open' | 'closed';
+  readonly labels: readonly string[];
+  readonly body: string;
+  readonly comments: readonly string[];
+}
+
+export interface IssueChunkMetadata {
+  readonly repository_id: string;
+}
+
+export interface IChunker<TContent = string, TMetadata = ChunkMetadata> {
+  chunk(content: TContent, metadata: TMetadata): Promise<VectorDocument[]>;
 }

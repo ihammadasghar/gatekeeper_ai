@@ -9,7 +9,7 @@ interface ParsedSection {
 }
 
 export class MarkdownChunker implements IChunker {
-  chunk(content: string, metadata: ChunkMetadata): VectorDocument[] {
+  async chunk(content: string, metadata: ChunkMetadata): Promise<VectorDocument[]> {
     const sections = this.parseSections(content);
     return this.buildDocuments(sections, metadata);
   }
