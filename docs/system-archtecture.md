@@ -1,3 +1,71 @@
+# Gatekeeper AI: System Architecture Document
+
+## 1. Executive Summary
+**Gatekeeper AI** is an intelligent, repository-aware GitHub issue management platform. This document outlines the system architecture designed to support a highly responsive, real-time AI chat interface while simultaneously handling computationally heavy, event-driven repository ingestion in the background.
+
+The architecture is built on a unified **Full-TypeScript stack**, leveraging Next.js for the client, Express.js for the API gateway, and the Cloudflare ecosystem (Agents SDK, Workflows, Vectorize) for stateful AI orchestration and background processing.
+
+---
+
+## 2. Technology Stack
+* **Frontend:** Next.js (React), Tailwind CSS, Vercel AI SDK
+* **API Gateway:** Express.js (Node.js)
+* **AI Orchestration:** Cloudflare Agents SDK (Durable Objects)
+* **LLM Provider:** Workers AI / OpenAI (via Agents SDK)
+* **Vector Database:** Cloudflare Vectorize
+* **Relational/Metadata Database:** Cloudflare D1 (Serverless SQLite) or PostgreSQL
+* **Background Jobs:** Cloudflare Workflows
+* **External Integration:** Native GitHub App (Webhooks & REST/GraphQL API)
+* **Language:** TypeScript (End-to-End)
+
+---
+
+## 3. High-Level Architecture
+
+```mermaid
+graph TD
+    %% Client Layer (Next.js)
+    subgraph Client Layer [Next.js + Tailwind]
+        User([User])
+        UI[React Dashboard UI]
+        Hooks[Client Hooks<br/>useAgent / useAgentChat]
+        
+        User <--> UI
+        UI <--> Hooks
+    end
+
+    %% API Layer (Express.js)
+    subgraph Gateway Layer [Express.js Backend]
+        Express[Express API Node.js]
+        Webhooks[GitHub Webhook Receiver]
+        
+        Hooks <--> |REST / SSE| Express
+    end
+
+    %% GitHub Integration
+    subgraph External Systems
+        GitHub[(GitHub Repositories)]
+        GitHub --> |Push, Label, Issue Events| Webhooks
+    end
+
+    %% AI Orchestration Layer (Cloudflare Agents SDK)
+    subgraph AI Orchestration [Cloudflare Ecosystem]
+        Router[Worker API Router]
+        AgentDO[Gatekeeper Agent<br/>Durable Object + SQLite Memory]
+        Workflows[Cloudflare Workflows<br/>Background Sync]
+        LLM((LLM Provider))
+        Vectorize[(Vectorize<br/>Cloudflare Vector DB)]
+        
+        Express <--> |WebSocket / HTTP| Router
+        Webhooks --> |Trigger Event| Workflows
+        Router <--> AgentDO
+        AgentDO <--> |Tool Calls| LLM
+        AgentDO <--> |Semantic Search| Vectorize
+        Workflows --> |Fetch Diffs & Embed| Vectorize
+        AgentDO <--> |Live API Calls via MCP/Tools| GitHub
+    end
+```
+
 ---
 
 ## 4. Component Deep Dive & Data Flow
