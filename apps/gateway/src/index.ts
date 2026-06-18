@@ -1,12 +1,4 @@
-import express from "express";
+import 'dotenv/config';
+import { startServer } from './server.js';
 
-const app = express();
-const PORT = process.env["PORT"] ?? 3001;
-
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
-});
-
-app.listen(PORT, () => {
-  console.log(`Gateway listening on http://localhost:${PORT}`);
-});
+startServer();
