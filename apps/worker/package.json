@@ -7,6 +7,7 @@
     "dev": "vite dev",
     "deploy": "vite build && wrangler deploy",
     "test": "vitest",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
     "types": "wrangler types env.d.ts --include-runtime false",
     "check": "tsc --noEmit",
     "login": "wrangler login",
