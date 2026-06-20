@@ -58,3 +58,26 @@ export interface IChatSessionService {
   findByRepository(repoId: string): Promise<ChatSession[]>;
   create(dto: CreateChatSessionDTO): Promise<ChatSession>;
 }
+
+// ── Repository Labels ─────────────────────────────────────────────────────────
+
+export interface RepositoryLabel {
+  readonly id: string;
+  readonly repositoryId: string;
+  readonly name: string;
+  readonly description: string | null;
+  readonly color: string;
+}
+
+/** Minimal shape needed to store a label — excludes GitHub-internal IDs. */
+export interface LabelInput {
+  readonly name: string;
+  readonly color: string;
+  readonly description?: string | null;
+}
+
+export interface IRepositoryLabelRepository {
+  /** Replace all labels for a repository with the provided set. Stale labels are deleted. */
+  upsertAll(repositoryId: string, labels: readonly LabelInput[]): Promise<void>;
+  findByRepository(repositoryId: string): Promise<RepositoryLabel[]>;
+}

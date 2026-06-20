@@ -4,12 +4,16 @@ import {
   type WorkflowStep
 } from "cloudflare:workers";
 import { DeltaSyncRunner, type DeltaSyncPayload } from './delta-sync.runner';
+import { LabelSyncRunner, type LabelSyncPayload, type IGitHubLabelService } from './label-sync.runner';
 import { VectorizeService } from '../lib/vectorize.service';
 import { D1SyncEventRepository } from '../repositories/sync-event.repository';
+import { D1RepositoryLabelRepository } from '../repositories/repository-label.repository';
 import { MarkdownChunker } from '../lib/chunking/markdown-chunker';
 import type { CommitFile, IGitHubFileService } from './delta-sync.runner';
-import type { IVectorizeIndex, IAIBinding } from '@gatekeeper/types';
+import type { IVectorizeIndex, IAIBinding, LabelInput } from '@gatekeeper/types';
 import type { ID1Database } from '../repositories/user.repository';
+
+// ── Concrete GitHub service implementations ───────────────────────────────────
 
 class GitHubFileService implements IGitHubFileService {
   constructor(private readonly token: string) {}
@@ -54,29 +58,79 @@ class GitHubFileService implements IGitHubFileService {
   }
 }
 
-interface DeltaSyncWorkflowPayload extends DeltaSyncPayload {
-  readonly syncEventId: string;
+class GitHubLabelService implements IGitHubLabelService {
+  constructor(private readonly token: string) {}
+
+  async fetchAllLabels(owner: string, repo: string): Promise<LabelInput[]> {
+    const labels: LabelInput[] = [];
+    let page = 1;
+
+    while (true) {
+      const url = `https://api.github.com/repos/${owner}/${repo}/labels?per_page=100&page=${page}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'gatekeeper-ai',
+        },
+      });
+
+      if (!response.ok) break;
+
+      const page_labels = await response.json() as Array<{ name: string; color: string; description: string | null }>;
+      labels.push(...page_labels.map((l) => ({ name: l.name, color: l.color, description: l.description })));
+
+      if (page_labels.length < 100) break;
+      page++;
+    }
+
+    return labels;
+  }
 }
 
+// ── Workflow payload (discriminated union) ────────────────────────────────────
+
+type IngestionWorkflowPayload =
+  | ({ readonly event_type: 'DELTA_SYNC' } & DeltaSyncPayload & { readonly syncEventId: string })
+  | ({ readonly event_type: 'LABEL_SYNC' } & LabelSyncPayload);
+
 /**
- * Cloudflare Workflow that handles DELTA_SYNC events triggered by GitHub push webhooks.
- * Business logic lives in DeltaSyncRunner (injectable, testable).
+ * Cloudflare Workflow that handles DELTA_SYNC and LABEL_SYNC events.
+ * Business logic lives in DeltaSyncRunner / LabelSyncRunner (injectable, testable).
  */
-export class IngestionWorkflow extends WorkflowEntrypoint<Env, DeltaSyncWorkflowPayload> {
+export class IngestionWorkflow extends WorkflowEntrypoint<Env, IngestionWorkflowPayload> {
   async run(
-    event: WorkflowEvent<DeltaSyncWorkflowPayload>,
+    event: WorkflowEvent<IngestionWorkflowPayload>,
     step: WorkflowStep
   ): Promise<void> {
-    const { syncEventId, ...payload } = event.payload;
+    const db = this.env.DB as unknown as ID1Database;
 
-    const runner = new DeltaSyncRunner(
-      new VectorizeService(this.env.VECTORIZE as unknown as IVectorizeIndex, this.env.AI as unknown as IAIBinding),
-      new D1SyncEventRepository(this.env.DB as unknown as ID1Database),
-      new GitHubFileService(this.env.GITHUB_TOKEN),
-      new MarkdownChunker(),
-    );
+    if (event.payload.event_type === 'DELTA_SYNC') {
+      const { syncEventId, event_type: _, ...payload } = event.payload;
 
-    await runner.run(step, payload, syncEventId);
+      const runner = new DeltaSyncRunner(
+        new VectorizeService(
+          this.env.VECTORIZE as unknown as IVectorizeIndex,
+          this.env.AI as unknown as IAIBinding,
+        ),
+        new D1SyncEventRepository(db),
+        new GitHubFileService(this.env.GITHUB_TOKEN),
+        new MarkdownChunker(),
+      );
+
+      await runner.run(step, payload, syncEventId);
+      return;
+    }
+
+    if (event.payload.event_type === 'LABEL_SYNC') {
+      const runner = new LabelSyncRunner(
+        new D1RepositoryLabelRepository(db),
+        new D1SyncEventRepository(db),
+        new GitHubLabelService(this.env.GITHUB_TOKEN),
+      );
+
+      await runner.run(step, event.payload);
+    }
   }
 }
 
