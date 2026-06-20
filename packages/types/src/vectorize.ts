@@ -2,7 +2,7 @@ import type { VectorDocumentMetadata } from './chunking';
 
 export interface IVectorizeVector {
   readonly id: string;
-  readonly values: readonly number[];
+  readonly values: number[];
   readonly metadata?: Record<string, unknown>;
 }
 

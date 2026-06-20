@@ -4,7 +4,7 @@ export interface ID1PreparedStatement {
   bind(...values: unknown[]): ID1PreparedStatement;
   first<T = Record<string, unknown>>(): Promise<T | null>;
   all<T = Record<string, unknown>>(): Promise<{ readonly results: readonly T[] }>;
-  run(): Promise<void>;
+  run(): Promise<unknown>;
 }
 
 export interface ID1Database {
