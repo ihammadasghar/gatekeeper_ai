@@ -2,4 +2,5 @@ export * from "./chunking";
 export * from "./interfaces";
 export * from "./repository";
 export * from "./user";
+export * from "./vectorize";
 export * from "./webhook";
